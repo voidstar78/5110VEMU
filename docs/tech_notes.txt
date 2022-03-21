@@ -1,0 +1,106 @@
+
+MIM 3-20
+0000 REGISTERS
+007F Common Language Control Area
+0200 Display Adapter
+0600 System Control Area
+0800 User Area
+
+MIM 4-65 REGISTERS
+
+"This displays the first 512 bytes or 256 halfwords of storage."
+"The first 64 halfwords are registers."  (128 bytes)
+
+"The 64 registers (halfwords) are divided into 4 levels"
+"(0, 1, 2, and 3) consisting of 16 registers each (0-F)."
+
+REGISTER
+LEVEL
+0		NORMAL MACHINE OPERATION
+1		ASYNC COMM
+2		PRINTER, TAPE, DISK, SERIAL, PARALLEL
+3		KEYBOARD   (Common and Language ROS does translation table)
+
+MIM 3-16
+"Each of these levels has 16 two-byte registers.  These registers are addressable as the lowest 128 bytes of read/write storage and are located on the processor card.  Register 0 of each level acts as an instruction address register.... The remaining 15 registers in each program level can be used as general purpose registers."
+
+MIM 3-18
+"Executable ROS is divided into ROS 1 and ROS 2.  During the power up sequence, the powr on reset (POR) activates ROS 1 mode, and the processor begins executing instructions from executable ROS.  The processor begins executing the bring up diagnostic at the address contained at location 000A, ending with the IPL routine."
+
+INSTALLED RWS    = 0x00AA
+AVAILABLE RWS    = 0x00A8
+TAPE STATUS BYTE = 0x008F
+PRINTER STATUS A = 0x0055
+PRINTER STATUS B = 0x0057
+DISK STATUS A    = 0x00E8
+DISK STATUS B    = 0x00E9
+KEY PRESS        = 0x00B0  (address 176)   MIM 3-43
+
+STOP BASIC = press ATTN
+RESUME BASIC = use "GO" command
+BACKSPACE = CMD + LEFT ARROW         (more like pressing DELETE)
+
+
+
+(at BASIC prompt)
+HOLD
+CMD -    (keypad minus)  --> DCP mode
+CMD */X  (on keypad)     --> DIAG DCP mode
+CMD +    (keypad plus)   --> EXIT DCP mode (back to BASIC/APL console)
+
+MIM 3-11
+
+IOCB
+
+bytes
+0	DEVICE ADDRESS
+1	SUB-DEVICE ADDRESS
+2	COMMAND CODE
+3	FUNCTION FLAGS
+4,5	BUFFER START ADDRESS
+6,7	BUFFER SIZE
+8,9	CONTROL INFORMATION
+10,11	IO WORK AREA ADDRESS
+12,13	RETURN CODE FROM IO SUPPORT
+14,15	CONTROL INFORMATION
+16,17	DEVICE STATUS
+18,19	DEVUCE STATUS
+
+DEVICE ADDRESSES
+00	DISPLAY
+01	COMMON AND LANGUAGE ROS
+02	na
+03	DISKETTE SORT
+04	KEYBOARD
+05	PRINTER
+06	BSCA
+07	PARALLEL IO
+08	na
+09	na
+0A	SERIAL IO
+0B	na
+0C	PRINT PLOT
+0D	DISKETTE DRIVE
+0E	TAPE DRIVE
+0F	na
+
+
+READ DATA REGISTER
+STORAGE ADDRESS REGISTER (SAR)
+OPERATION REGISTER (OpReg)
+STORAGE DATA REGISTER (SDR)
+ARITHMETIC AND LOGIC UNIT REGISTER (ALU Reg)
+ARITHMETIC AND LOGIC UNIT (ALU)
+
+
+MIM 3-16
+"Oscillators/Clocks: The processor uses a 15.1 MHz oscillator to generate 66.2 nanosecond clock pulses. These multiclock cycle (MCC) pulses are used to control data throughout the computing system.  MCC pulses make up the I phase (instruction) and E phase (execute) machine cycles."
+
+"Each I-phase consists of three I cycles.  I cycles 1 and 3 consist of 3 MCC pulses.  I-cycle 2 consists of 8 MCC pulses."
+"Each E-phase consists of one through five E cycles.  E cycles can be either 3 MCC or 8 MCC pulses, depending on the instruction being executed."
+"I cycle 1 - The contents of program level register 0 are loaded into SAR."
+"I cycle 2 - SAR addresses either R/W storge or executable ROS and transfers the microinstruction located at that address into the operation register."
+"I cycle 3 - The address in the SAR is incremented by two and read back into register 0 of the current program level."
+"E phase - .... Only R/W storage can be addressed during execute cycles."
+
+

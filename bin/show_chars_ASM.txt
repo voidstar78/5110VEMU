@@ -1,0 +1,22 @@
+NOTE: As-is, this format isn't compatible with VEMU5110.  See the ball_bounce example to see how to do so.
+NOTE: It is just removing the addresses and comments, and just entering the instructions (with CR/LF parsing turned off).
+NOTE: I based this on Christian Corti initial assembly example that prints a character string.
+
+ADDR   CODE       PALM ASSEMBLY     COMMENTS
+----   ----       -------------     ----------
+
+2000   D501 0200  LWI R5, #$0200  ; Begin of display buffer
+2004   8606       LBI R6, #$06    ; High byte of end address
+2006   8740       LBI R7, #' '    ; Blank (Hex $40) 
+2008   7750       MOVB (R5)+, R7 
+200A   C567       SBSH R5, R6 
+200C   F005       BRA $2008
+
+200E   D501 0200  LWI R5, #$0200  ; Let REG[R5] = Begin of display buffer 0x0200
+2012   8604       LBI R6, #$04    ; High byte of end address  (256 only)
+2014   8700       LBI R7, 00      ; start R7 at 0x00
+2016   7750       MOVB (R5)+, R7  ; RWS[R5] = value in R7 (and increment R5)
+2018   0772       INC R7,R7       ; increment R7
+201A   0552       INC R5,R5       ; increment R5 (to skip a column)
+201C   C567       SBSH R5, R6     ; SKIP if all bits in R6 are also set in HI(R5)
+201E   F009       BRA $2016       ; 8 bytes (4 instructions) plus one extra byte 

@@ -8,7 +8,8 @@
         cpu IBM5110
 
         include "ebcdic.inc"
-        intsyntax       +$hex,-x'hex'
+        intsyntax       +$hex,-x'hex'   ; < support $-style hex instead of IBM 0x style
+	codepage cp037                  ; < activate the EBCDIC mapping of chars
         org $0B00
 
 Start:

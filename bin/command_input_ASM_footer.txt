@@ -1,0 +1,6 @@
+D 20
+N 36   EXECUTE (commit current line)
+D 10   return to DCP console by pressing ATTN
+N 9    ATTN
+Q 0 BR 0B00
+N 36   EXECUTE (dont specify end address)

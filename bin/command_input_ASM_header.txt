@@ -1,0 +1,11 @@
+D 20
+N 110  press HOLD
+D 20
+C 82   index 82 = CMD-MINUS    enter DSP
+D 20
+C 63   index 63 = CMD-MULTIPLY enter DIAG
+D 20   
+N 38   index 38 == A (alter)
+D 20  alter memory starting at the address specified below
+Q 0 0B00
+D 10

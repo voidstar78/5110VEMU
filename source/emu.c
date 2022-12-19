@@ -20,16 +20,20 @@
 
 // TBD - BAD PRACTICE TO COUPLE LOGIC TO DISPLAY...
 #include <curses.h>
-WINDOW* win_cpu;
-int win_cpu_height;
-int win_cpu_width;
-WINDOW* win_addr;
-int win_addr_height;
-int win_addr_width;
+//WINDOW* win_cpu;
+//int win_cpu_height;
+//int win_cpu_width;
+//WINDOW* win_addr;
+//int win_addr_height;
+//int win_addr_width;
 #define DEBUG 0
 WINDOW* win_disasm;
 int win_disasm_height;
 int win_disasm_width;
+
+WINDOW* win_disasm_long;
+int win_disasm_long_height;
+int win_disasm_long_width;
 
 /* select default mode */
 /*#define APL*/
@@ -160,8 +164,9 @@ int halt; // boolean to indicate HALTE state
 short step_mode;
 short disasm_trace;
 unsigned long int do_step;
-unsigned long long int start_step_at;
+long int start_step_at;
 char str_command_input[255];
+char str_binary_load[255];
 
 int mode[4];  
   // mode[0] can be in any of MODE_RWS, MODE_BUP, MODE_ROS
@@ -273,20 +278,32 @@ const char *FullTicks[16] =
 	"", "", "", "", "", "", "", ""
 };
 
-void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
+int disasm(WINDOW* out_win, unsigned short n0, unsigned short addr, unsigned short n0_next)
 {
+  int result;
 	unsigned char n1, n2, n3, n4;
 	//unsigned short n0;
 	tParams p1, p2;
-	int iscall, callreg;
+	int iscall;
+  int callreg;
 	int extranl;
 
-  static unsigned short prev_n0 = 0;
-  static unsigned short prev_addr = 0;
+  result = 2;  // normal instruction, otherwise return 4 if "extended instruction"
 
-  if ((n0 == prev_n0) && (prev_addr == addr)) return;
+  // **************
+  /*
+  static unsigned short prev_n0 = 0xFFFF;
+  static unsigned short prev_addr = 0xFFFF;
+
+  if ((n0 == prev_n0) && (prev_addr == addr)) 
+  {
+    // if the address has not changed, and the opcode has not changed, then nothing new to disassemble...
+    return;
+  }
   prev_n0 = n0;
   prev_addr = addr;
+  */
+  // ****************
 
 	iscall = 0;
 
@@ -306,21 +323,23 @@ void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
 		p2 = None;
 		extranl = 0;
 
+    /*
 		if(iscall && !(n1==13 && n2==0 && n3==callreg && n4==1))
 		{
-			wprintw(win_disasm, "  INC2 R%d, R0\n", callreg);
+			wprintw(out_win, "  INC2 R%X, R0\n", callreg);
 			iscall = 0;
 		}
+    */
 
-		if(!iscall)
+		//if(!iscall)
 		{
-			wprintw(win_disasm, "%04X ", addr);
-			wprintw(win_disasm, "%04X", n0);
+			wprintw(out_win, "%04X ", addr);
+			wprintw(out_win, "%04X", n0);
 			if(n1!=0 && n1!=13)
-				wprintw(win_disasm, "  ");
+				wprintw(out_win, "  ");
 		}
-		else
-			wprintw(win_disasm, " %04X ", n0);
+		//else
+		//	wprintw(out_win, " %04X ", n0);
 
 /*
 		if(iscall)
@@ -334,31 +353,35 @@ void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
 			case 0:
 				if(n0 == 0)
 				{
-					wprintw(win_disasm, "  HALT");
+					wprintw(out_win, "      HALT");
 				}
 				else if(n0 == 0x0004)
-					wprintw(win_disasm, "  NOP");
+					wprintw(out_win, "      NOP");
 				else if(n3==0x00 && n4==0x03)
 				{
+          wprintw(out_win, "      INC2 ");
+          p1 = Reg1;
+          p2 = Reg2;
+
 					iscall = 1;
 					callreg = n2;
 				}
 				else if(n2==0x00 && n4==0x04)
 				{
-					wprintw(win_disasm, "  RET ");
+					wprintw(out_win, "      RET ");
 					p1 = Reg2;
 					extranl = 1;
 				}
 				else
 				{
-					wprintw(win_disasm, "  %s ", Op_0[n4].Mnemonic);
+					wprintw(out_win, "      %s ", Op_0[n4].Mnemonic);
 					p1 = Op_0[n4].Nibble1;
 					p2 = Op_0[n4].Nibble2;
 				}
 				break;
 
 			case 1:
-				wprintw(win_disasm, "CTRL ");
+				wprintw(out_win, "    CTRL ");
 				p1 = Device;
 				p2 = Immediate;
 				break;
@@ -367,47 +390,47 @@ void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
 				if(n2 == 0)
 				{
 					n0 = ((n3 << 4) | n4) << 1;
-					wprintw(win_disasm, "JMP ($%04X)", n0);
+					wprintw(out_win, "    JMP ($%04X)", n0);
 					extranl = 1;
 				}
 				else
 				{
-					wprintw(win_disasm, "MOVE ");
+					wprintw(out_win, "    MOVE ");
 					p1 = Reg1;
 					p2 = WordAddr;
 				}
 				break;
 
 			case 3:
-				wprintw(win_disasm, "MOVE ");
+				wprintw(out_win, "    MOVE ");
 				p1 = WordAddr;
 				p2 = Reg1;
 				break;
 
 			case 4:
-				wprintw(win_disasm, "PUTB $%X, (R%d)%s", n2, n3, FullTicks[n4]);
+				wprintw(out_win, "    PUTB $%X, (R%X)%s", n2, n3, FullTicks[n4]);
 				break;
 
 			case 5:
-				wprintw(win_disasm, "MOVE (R%d)%s, R%d", n3, HalfTicks[n4], n2);
+				wprintw(out_win, "    MOVE (R%X)%s, R%X", n3, HalfTicks[n4], n2);
 				break;
 
 			case 6:
-				wprintw(win_disasm, "MOVB R%d, (R%d)%s", n2, n3, FullTicks[n4]);
+				wprintw(out_win, "    MOVB R%X, (R%X)%s", n2, n3, FullTicks[n4]);
 				break;
 
 			case 7:
-				wprintw(win_disasm, "MOVB (R%d)%s, R%d", n3, FullTicks[n4], n2);
+				wprintw(out_win, "    MOVB (R%X)%s, R%X", n3, FullTicks[n4], n2);
 				break;
 
 			case 8:
-				wprintw(win_disasm, "LBI ");
+				wprintw(out_win, "    LBI ");
 				p1 = Reg1;
 				p2 = Immediate;
 				break;
 
 			case 9:
-				wprintw(win_disasm, "CLR ");
+				wprintw(out_win, "    CLR ");
 				p1 = Reg1;
 				p2 = Immediate;
 				break;
@@ -418,66 +441,69 @@ void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
 				if(n2 == 0)
 				{
 /*					printf("JMP $%02X(R0)\t\t; JMP $%04X", n0, addr+2+n0); */
-					wprintw(win_disasm, "BRA $%04X  ; $%02X(R0)", addr+2+n0, n0);
+					wprintw(out_win, "    BRA $%04X  ; $%02X(R0)", addr+2+n0, n0);
 					extranl = 1;
 				}
 				else
-					wprintw(win_disasm, "ADD R%d, #$%02X", n2, n0);
+					wprintw(out_win, "    ADD R%X, #$%02X", n2, n0);
 				break;
 
 			case 11:
-				wprintw(win_disasm, "SET ");
+				wprintw(out_win, "    SET ");
 				p1 = Reg1;
 				p2 = Immediate;
 				break;
 
 			case 12:
-				wprintw(win_disasm, "%s ", Op_C[n4].Mnemonic);
+				wprintw(out_win, "    %s ", Op_C[n4].Mnemonic);
 				p1 = Op_C[n4].Nibble1;
 				p2 = Op_C[n4].Nibble2;
 				break;
 
-			case 13:
+			case 13:  // 'D'
 				if(n3==0 && n4==1)
 				{
           n0 = n0_next;
+          result = 4;
 					//fread(&n0, 2, 1, datei);  // TBD read the next word
 					//n0 = (n0 >> 8) | ((n0 & 0xFF) << 8);
 					if(n2 == 0)
 					{
-							wprintw(win_disasm, " %04X JMP $%04X", n0, n0);
+							wprintw(out_win, " %04X JMP $%04X", n0, n0);
 							extranl = 1;
 					}
 					else
-						wprintw(win_disasm, " %04X LWI R%d, #$%04X", n0, n2, n0);
+						wprintw(out_win, " %04X LWI R%X, #$%04X", n0, n2, n0);
 
 					addr += 2;
 				}
 				else if(n2==0 && n3==0 && n4==8)
 				{
           n0 = n0_next;
+          result = 4;
 					//fread(&n0, 2, 1, datei);
 					//n0 = (n0 >> 8) | ((n0 & 0xFF) << 8);
-					wprintw(win_disasm, " %04X JMP $%04X", n0, n0);
+					wprintw(out_win, " %04X JMP $%04X", n0, n0);
 					addr += 2;
 					extranl = 1;
 				}
 				else
 				{
-					if(iscall)
+					if(iscall)  // <-- won't happen but if prior OP is like D021
 					{
             n0 = n0_next;
+            result = 4;
 						//fread(&n0, 2, 1, datei);
 						//n0 = (n0 >> 8) | ((n0 & 0xFF) << 8);
-						wprintw(win_disasm, "%04X CALL $%04X, R%d", n0, n0, callreg);
+						wprintw(out_win, "%04X CALL $%04X, R%X", n0, n0, callreg);
 						addr += 2;
 
                   iscall = 0;
 					}
 					else if(n2 == 0)
-						wprintw(win_disasm, "  JMP (R%d)%s", n3, HalfTicks[n4]);
+						wprintw(out_win, "      JMP (R%X)%s", n3, HalfTicks[n4]);
 					else
-						wprintw(win_disasm, "  MOVE R%d, (R%d)%s", n2, n3, HalfTicks[n4]);
+						wprintw(out_win, "      MOVE R%X, (R%X)%s", n2, n3, HalfTicks[n4]);
 				}
 				break;
 
@@ -486,24 +512,24 @@ void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
 				{
 					case 12:
 						if(n2 == 0)
-							wprintw(win_disasm, "SHR R%d", n3);
+							wprintw(out_win, "    SHR R%X", n3);
 						break;
 
 					case 13:
 						if(n2 == 0)
-							wprintw(win_disasm, "ROR R%d", n3);
+							wprintw(out_win, "    ROR R%X", n3);
 						break;
 
 					case 14:
 						if(n2 == 0)
-							wprintw(win_disasm, "ROR3 R%d", n3);
+							wprintw(out_win, "    ROR3 R%X", n3);
 						break;
 
 					case 15:
 						if(n2 == 0)
-							wprintw(win_disasm, "SWAP R%d", n3);
+							wprintw(out_win, "    SWAP R%X", n3);
 						else
-							wprintw(win_disasm, "STAT R%d, $%X", n3, n2);
+							wprintw(out_win, "    STAT R%X, $%X", n3, n2);
 						break;
 				}
 				break;
@@ -514,11 +540,11 @@ void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
 				if(n2 == 0)
 				{
 /*					printf("JMP -$%02X(R0)\t\t; JMP $%04X", n0, addr+2-n0); */
-					wprintw(win_disasm, "BRA $%04X  ; -> -$%02X(R0)", addr+2-n0, n0);
+					wprintw(out_win, "    BRA $%04X  ; -> -$%02X(R0)", addr+2-n0, n0);
 					extranl = 1;
 				}
 				else
-					wprintw(win_disasm, "SUB R%d, #$%02X", n2, n0);
+					wprintw(out_win, "    SUB R%X, #$%02X", n2, n0);
 				break;
 		}
 
@@ -526,58 +552,59 @@ void disasm(unsigned short n0, unsigned short addr, unsigned short n0_next)
 		{
 			case Reg1:
 			case Reg:
-				wprintw(win_disasm, "R%d", n2);
+				wprintw(out_win, "R%X", n2);
 				break;
 
 			case Reg2:
-				wprintw(win_disasm, "R%d", n3);
+				wprintw(out_win, "R%X", n3);
 				break;
 
 			case Device:
-				wprintw(win_disasm, "$%X", n2);
+				wprintw(out_win, "$%X", n2);
 				break;
 
 			case Immediate:
-				wprintw(win_disasm, "#$%02X", (n3 << 4) | n4);
+				wprintw(out_win, "#$%02X", (n3 << 4) | n4);
 				break;
 
 			case WordAddr:
-				wprintw(win_disasm, "$%02X", ((n3 << 4) | n4) << 1);
+				wprintw(out_win, "$%02X", ((n3 << 4) | n4) << 1);
 				break;
 		}
 
 		switch(p2)
 		{
 			case Reg1:
-				wprintw(win_disasm, ", R%d", n2);
+				wprintw(out_win, ", R%X", n2);
 				break;
 
          case Reg2:
 			case Reg:
-				wprintw(win_disasm, ", R%d", n3);
+				wprintw(out_win, ", R%X", n3);
 				break;
 
 			case Immediate:
-				wprintw(win_disasm, ", #$%02X", (n3 << 4) | n4);
+				wprintw(out_win, ", #$%02X", (n3 << 4) | n4);
 				break;
 
 			case Device:
-				wprintw(win_disasm, ", $%X", n2);
+				wprintw(out_win, ", $%X", n2);
 				break;
 
 			case WordAddr:
-				wprintw(win_disasm, ", $%02X", ((n3 << 4) | n4) << 1);
+				wprintw(out_win, ", $%02X", ((n3 << 4) | n4) << 1);
 				break;
 		}
 
-		if(!iscall)
-			wprintw(win_disasm, "\n");
+//    if(!iscall)
+			wprintw(out_win, "\n");
 
-		if(extranl)
-			wprintw(win_disasm, "\n");
-
-		addr += 2;
+//		if(extranl)
+	//		wprintw(out_win, "\n");
+		//addr += 2;
 	}
+
+  return result;
 }
 // **********************************************
 
@@ -586,14 +613,46 @@ int emu_fetch()
 #ifdef LITTLE_ENDIAN
 	USHORT swptmp;
 #endif
-  static int prev_level = 99;
+  //static int prev_level = 99;
 //  static USHORT prev_OP = 0xFFFF;
-  static unsigned long long int instr_count = 0;
+  static unsigned long long int instr_count[4] = {0,0,0,0};
+  static char loaded_binary = FALSE;
+	FILE *infile;
+	char *fname, *base;
+	unsigned long baseval;
+  USHORT OP_temp;
+  USHORT OP_temp_next;
+  unsigned int OP_addr_long;
+  USHORT a;
+  int disasm_result;
+  static unsigned short prev_n0 = 0xFFFF;
+  static unsigned short prev_addr = 0xFFFF;
+
+  if (loaded_binary == FALSE)
+  {                   
+    // only do this after the startup memory checks
+    // because those checks overwrite RWS.
+    // the following value was determined by trial and error (can be a little lower when BASIC used)
+    if (instr_count[0] > 10000000)  
+    {
+      baseval = 0x0B00;
+
+      // do LoadFile
+	    infile = fopen(str_binary_load, "rb");
+	    if(infile)
+	    {
+	      fread(&RWSb[baseval], 65536-baseval, 1, infile);
+	      fclose(infile);
+	    }
+      loaded_binary = TRUE;  // or at least attempted to be loaded
+    }
+  }
 
   if ((step_mode == 1) || (disasm_trace != 0))
   {
     if (do_step == 0)
     {
+      /*
       wclear(win_addr);
 
       wprintw(win_addr, "currROS ");
@@ -686,8 +745,9 @@ int emu_fetch()
         wprintw(win_addr, "???\n");
       }
 
-      wprintw(win_addr, "OP = %04X\n%012lu", OP, instr_count);
+      wprintw(win_addr, "OP = %04X\n%012lu", OP, instr_count[level]);
       wrefresh(win_addr);
+      */
 
       // show disassembled opcode
       if (disasm_trace == 1)
@@ -696,8 +756,80 @@ int emu_fetch()
       }
       else
       {
-        disasm(OP, OP_addr, OP_next); 
-        wrefresh(win_disasm);
+
+        if ((OP == prev_n0) && (prev_addr == OP_addr)) 
+        {
+          // if the address has not changed, and the opcode has not changed, then nothing new to disassemble...
+          // nothing to do
+        }
+        else
+        {
+          prev_n0 = OP;
+          prev_addr = OP_addr;
+
+          //disasm_result = disasm(win_disasm, OP, OP_addr, OP_next); 
+          wrefresh(win_disasm);
+// ***********************************
+          wclear(win_disasm_long);
+          OP_addr_long = OP_addr-16;
+          while ( OP_addr_long < OP_addr+16 )
+          {
+	  OP_temp = 
+      ((mode[level] == MODE_RWS) ? 
+        // "true", the current level is in RWS MODE
+        RWS   // next instruction address always written to beginning of RWS (language ROS must be handling that)?
+      : 
+        // "false", the current level is not RWS MODE... examine further...
+        (level ? 
+          // "true" (1,2,3), force executive ROS
+          ExecROS 
+        : 
+          // "false", index into the designated ROS for level 0
+          curr_ros))[OP_addr_long >> 1];   // does >>1 imply a ROS can't be larger than 32K ?  (this limitation does not apply to non-executable ROS)
+
+	  OP_temp_next = 
+      ((mode[level] == MODE_RWS) ? 
+        // "true", the current level is in RWS MODE
+        RWS   // next instruction address always written to beginning of RWS (language ROS must be handling that)?
+      : 
+        // "false", the current level is not RWS MODE... examine further...
+        (level ? 
+          // "true" (1,2,3), force executive ROS
+          ExecROS 
+        : 
+          // "false", index into the designated ROS for level 0
+          curr_ros))[(OP_addr_long >> 1)+1];   // does >>1 imply a ROS can't be larger than 32K ?  (this limitation does not apply to non-executable ROS)
+
+
+
+  #ifdef LITTLE_ENDIAN
+	  OP_temp = SWAB(OP_temp);
+	  OP_temp_next = SWAB(OP_temp_next);
+  #endif
+
+  //          OP_temp = RWS[OP_addr_long];
+            if (OP_addr_long == OP_addr)
+            {
+              wattron(win_disasm_long, COLOR_PAIR(0) | A_BOLD);  // "bright" white
+            }
+            else if (OP_addr_long == OP_addr+disasm_result)
+            { 
+              wattron(win_disasm_long, COLOR_PAIR(5) | A_BOLD);  // yellow
+            }
+            else
+            {
+              wattroff(win_disasm_long, COLOR_PAIR(5) | A_BOLD);  // back to normal white
+            }
+            disasm_result = disasm(win_disasm_long, OP_temp, OP_addr_long, OP_temp_next);
+          
+            OP_addr_long += disasm_result;
+            a = 0;
+          }
+  // ***********************************
+          wrefresh(win_disasm_long);
+        }
+
+        
       }
 
       if (disasm_trace != 0)
@@ -713,17 +845,29 @@ int emu_fetch()
 
   check_int();		/* check for pending interrupts */
 
+  /*
   if (level != prev_level)
   {
     wprintw(win_cpu, "%d", level);
     wrefresh(win_cpu);
     prev_level = level;
   }
+  */
 
 //  mvprintw(2, 160, "a");
 //  mvprintw(2, 150, "test");  //%04X", &RWS);
 
   OP_addr = RWS[level * 16];
+  if (OP_addr == 0x0B00)
+  {
+    if (start_step_at == -1)
+    {
+      start_step_at = instr_count[level]+1;
+      wprintw(win_disasm, "[0x0B00 @ %lu]\n", instr_count[level]);
+      wprintw(win_disasm, "[0x0B00 @ %lu]\n", instr_count[level]);
+      wprintw(win_disasm, "[0x0B00 @ %lu]\n", instr_count[level]);
+    }
+  }
 
 	OP = 
     ((mode[level] == MODE_RWS) ? 
@@ -757,7 +901,7 @@ int emu_fetch()
 	OP_next = SWAB(OP_next);
 #endif
 
-  if (start_step_at == instr_count+1)
+  if (start_step_at == instr_count[level]+1)
   {
     wprintw(win_disasm, "startup OP count reached...\n");
 
@@ -777,10 +921,10 @@ int emu_fetch()
       --do_step;
     }
   }
-  ++instr_count;
-  if (instr_count == ULLONG_MAX)
+  ++instr_count[level];
+  if (instr_count[level] == ULLONG_MAX)
   {
-    instr_count = 0;
+    instr_count[level] = 0;
   }
 
   // OP is short (16-bit)
@@ -941,8 +1085,19 @@ int emu_fetch()
 
   if (disasm_trace != 0)
   {
-        disasm(OP, OP_addr, OP_next); 
-        wrefresh(win_disasm);
+        if ((OP == prev_n0) && (prev_addr == OP_addr)) 
+        {
+          // if the address has not changed, and the opcode has not changed, then nothing new to disassemble...
+          // nothing to do
+        }
+        else
+        {
+          prev_n0 = OP;
+          prev_addr = OP_addr;
+
+          disasm(win_disasm, OP, OP_addr, OP_next); 
+          wrefresh(win_disasm);
+        }
   }
 
 	TRACE(0, 0);
@@ -1758,22 +1913,32 @@ int emu_init()
   
   init_pair(1, COLOR_WHITE, COLOR_BLUE);
 
+  /*
   win_cpu_height = 1;
   win_cpu_width = 19;
   win_cpu = newwin(win_cpu_height, win_cpu_width, 0, 150);  
   scrollok(win_cpu, 1);
   wbkgd(win_cpu, COLOR_PAIR(1));
+  */
 
+  /*
   win_addr_height = 6;
   win_addr_width = 19;
   win_addr = newwin(win_addr_height, win_addr_width, 3, 150);
   wbkgd(win_addr, COLOR_PAIR(1));
-
-  win_disasm_height = 5;
-  win_disasm_width = 44;
-  win_disasm = newwin(win_disasm_height, win_disasm_width, 11, 150);
+  */
+  win_disasm_height = 8;
+  win_disasm_width = 72;
+  win_disasm = newwin(win_disasm_height, win_disasm_width, 8, 65);
+  wprintw(win_console, "VEMU5110\n");
   scrollok(win_disasm, 1);
   wbkgd(win_disasm, COLOR_PAIR(1));
+
+  win_disasm_long_height = 16;
+  win_disasm_long_width = 56;
+  win_disasm_long = newwin(win_disasm_long_height, win_disasm_long_width, 0, 140);
+  scrollok(win_disasm_long, 0);
+  wbkgd(win_disasm_long, COLOR_PAIR(1));
 
 	dump = 0;
 	

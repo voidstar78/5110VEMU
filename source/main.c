@@ -72,14 +72,19 @@ void LoadFile(char *cmdline)
 	char *fname, *base;
 	unsigned long baseval;
 
+  fname = cmdline;
+  /*
 	fname = strchr(cmdline, ' ');
 	if(!fname)
 	{
 		printf("No file specified.\n");
 		return;
 	}
-	fname++;
+	fname++;  // skip past the space
+  */
 
+  baseval = 0x0B00;
+  /*
 	base = strchr(fname, ' ');
 	if(!base)
 		baseval = 0x0B00;
@@ -94,7 +99,8 @@ void LoadFile(char *cmdline)
 		printf("Illegal load address %lu.\n", baseval);
 		return;
 	}
-	
+*/
+
 	infile = fopen(fname, "rb");
 	if(!infile)
 	{
@@ -104,7 +110,7 @@ void LoadFile(char *cmdline)
 	}
 	fread(&RWSb[baseval], 65536-baseval, 1, infile);
 	fclose(infile);
-	printf("Done.\n");
+	printf("Loaded binary.\n");
 }
 
 void Halt()
@@ -175,6 +181,7 @@ int main(int argc, char *argv[])
 	int num_threads=0;
 	int i, retval;
 	char *cmd;
+  char* cmd_substr;
 
 	/* Initialize emulator and I/O */
 
@@ -223,13 +230,14 @@ int main(int argc, char *argv[])
 	}
 
 	/* MAIN LOOP */
-  if (argc != 4)
+  if (argc < 4)
   {
     printf("\nCommand-line arguments:\n\n");
-    printf("5110emu <a|b> <n> <script>\n");
+    printf("5110emu <a|b> <n> <script> [bin]\n");
     printf("<a|b>    use \"a\" for APL, \"b\" for BASIC\n");
     printf("<n>      start step mode at cycle N (0 for none)\n");
     printf("<script> text file input (or \"none\" if no initial input)\n\n");
+    printf("[bin]    input binary file - optional\n");
     printf("example: 5110emu b 0 command_input_salvo1_BAS.txt\n");
     printf("example: 5110emu a 0 command_input_ball_bounce_ASM.txt\n");
     printf("example: 5110emu b 170000 none\n");
@@ -253,9 +261,16 @@ int main(int argc, char *argv[])
       exit(-2);
     }
 
-    sscanf(argv[2], "%d", &start_step_at);
+    sscanf(argv[2], "%ld", &start_step_at);
 
     strcpy(str_command_input, argv[3]);
+
+    str_binary_load[0] = '\0';
+    if (argc >= 5)
+    {
+      strcpy(str_binary_load, argv[4]);  // loaded in fetch, cleared after loaded
+      //LoadFile(argv[4]);
+    }
   }
 
 	//using_history();

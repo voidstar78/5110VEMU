@@ -186,15 +186,15 @@ int whiteColor;
 //XFontStruct *font;
 
 WINDOW* win_main;       // main CRT 64 col x 16 row display (top left)
-WINDOW* win_inputs;     // mini-window to show mapping of PC keycodes over to IBM 5110 scancodes as they are typed 
+//WINDOW* win_inputs;     // mini-window to show mapping of PC keycodes over to IBM 5110 scancodes as they are typed 
 //WINDOW* win_mode;     // "modes" used to be in a window, but they are static position so more efficient to just draw the updated mode values (no scroll)
 WINDOW* win_registers;  // the IBM 5110 has a "registers" key to view the first 512 bytes.  On a modern PC, we can show both the CRT display and these registers at the same time.  This is converted to the IBM 5110 big endian format, to better match the actual 5110 register display.
 WINDOW* win_screen_ram; // a "raw" view of the RWS array is display at the bottom, in an expanded hex view.  This will be in the Intel little endian format for performance.
 //WINDOW* win_status;   // like win_mode, I used to have a window for this - but its more efficient to just draw the status updates (no scroll)
 int win_main_height;
 int win_main_width;
-int win_inputs_height;
-int win_inputs_width;
+//int win_inputs_height;
+//int win_inputs_width;
 //int win_mode_height;
 //int win_mode_width;
 int win_registers_height;
@@ -482,23 +482,28 @@ int DisplayInit()
   init_pair(2, COLOR_YELLOW, COLOR_BLACK);
   init_pair(3, COLOR_CYAN, COLOR_BLACK);
   init_pair(4, COLOR_MAGENTA, COLOR_BLACK);
+  init_pair(5, COLOR_YELLOW, COLOR_BLUE);
 
   win_main_height = 16;
   win_main_width = 64;
   win_main = newwin(win_main_height, win_main_width, 0, 0);  
 
+  /*
   win_inputs_height = 5;
   win_inputs_width = 11;
   win_inputs = newwin(win_inputs_height, win_inputs_width, 1, 65);
   scrollok(win_inputs, 1);
   mvprintw(0, 65, "idx -> scan");
+  */
 
   // Instead of drawing this fixed text over and over, draw it once.  During UpdateDisplay, we'll redraw just the actual modes per level
+  /*
   mvprintw( 7, 65, "LVL  MODE");
   mvprintw( 8, 65, "0 -> ");
   mvprintw( 9, 65, "1 -> ");
   mvprintw(10, 65, "2 -> ");
   mvprintw(11, 65, "3 -> ");
+  */
 
 /*
   win_mode_height = 5;
@@ -506,12 +511,12 @@ int DisplayInit()
   win_mode = newwin(win_mode_height, win_mode_width, 10, 65);
   */
 
-  win_registers_height = 16;
+  win_registers_height = 7;
   win_registers_width = 72;
-  win_registers = newwin(win_registers_height, win_registers_width, 0, 77);
+  win_registers = newwin(win_registers_height, win_registers_width, 0, 65);
 
   win_screen_ram_height = 18;
-  win_screen_ram_width = 196;
+  win_screen_ram_width = 200;
   win_screen_ram = newwin(win_screen_ram_height, win_screen_ram_width, 22, 0);
 
 /*
@@ -521,7 +526,7 @@ int DisplayInit()
 */
 
   wbkgd(win_main, COLOR_PAIR(1));
-  wbkgd(win_inputs, COLOR_PAIR(1));
+  //wbkgd(win_inputs, COLOR_PAIR(1));
   //wbkgd(win_mode, COLOR_PAIR(1));
   wbkgd(win_registers, COLOR_PAIR(1));
   wbkgd(win_screen_ram, COLOR_PAIR(1));
@@ -557,6 +562,7 @@ int DisplayInit()
   mvprintw(21, 140, "REWIND           rewind the tape");
   attron(COLOR_PAIR(0));
 
+  /*
   // win_status      12345678901234567890
   mvprintw( 0, 172, "INSTALLED RWS 0xAA");
   mvprintw( 1, 172, "AVAILABLE RWS 0xA8");
@@ -569,13 +575,14 @@ int DisplayInit()
   mvprintw( 8, 172, "STATUS 1 key  0x69");
   mvprintw( 9, 172, "STATUS 2 disp 0x6B");
   mvprintw(10, 172, "STATUS 3 ???  0x73");  
+  */
 
   timeout(2);  // required to add a timeout on how long getch waits for a keypress (0 seems to work fine, it's still some fraction of a second)
   noecho();  // this disables the local console from echo'ing/repeating keystrokes
   keypad(stdscr, 1);  // this is needed to enable reading of arrow keys
 //  refresh();  // doesn't seem to be required, the display gets refreshed soon anyway
 
-  wrefresh(win_inputs);
+  //wrefresh(win_inputs);
   //wrefresh(win_mode);
 
   /*
@@ -653,13 +660,32 @@ void UpdateScreen()
 		{
 			//XDrawImageString(dpy, win, gc, 0, (i*24)-4, ptr, 64);
 
+
+      if ( (ptr_ram-RWSb) >= 0xFFFF )
+      {
+        ptr_ram = RWSb;
+      }
+
+//      if (ptr_ram-RWSb < 0xFFFF)
+      {
+        mvwprintw(win_screen_ram, i, 0, "%04X", ptr_ram-RWSb);
+      }
+  //    else
+      {
+    //    mvwprintw(win_screen_ram, i, 0, "????");
+      }
+
       for (x = 0; x < 64; ++x)
       {
         //printf("%c", font_translate[ptr[x]]);
 
         mvwprintw(win_main, i, x, "%c", font_translate[ptr[x]]);
 
-        mvwprintw(win_screen_ram, i, x*3, "%02X", ptr_ram[x]);
+        mvwprintw(win_screen_ram, i, x*3+8, "%02X", ptr_ram[x]);
+        if (x % 8 == 0)
+        {
+          mvwprintw(win_screen_ram, i, x*3+7, "|");
+        }
       }
       //printf("\n");
 
@@ -695,6 +721,7 @@ void UpdateScreen()
   status_key2 = RWSb[0x6B-1];         // dec 107
   status_key3 = RWSb[0x73-1];         // dec 115
 
+  /*
   mvprintw( 0, 192, "%02X\n", status_installed_rws);
   mvprintw( 1, 192, "%02X\n", status_available_rws);
   mvprintw( 2, 192, "%02X\n", status_last_key_press);
@@ -706,19 +733,41 @@ void UpdateScreen()
   mvprintw( 8, 192, "%02X %03d\n", status_key1, status_key1);
   mvprintw( 9, 192, "%02X %03d\n", status_key2, status_key2);
   mvprintw(10, 192, "%02X %03d\n", status_key3, status_key3);
-	
+	*/
+
   // SHOW THE REGISTERS
   ptr = &RWSb[0x0000];   
 	{
     wclear(win_registers);
+    wprintw(win_registers, "ADDR R0  R1  R2  R3  R4  R5  R6  R7   R8  R9  RA  RB  RC  RD  RE  RF\n");
 
     i = 0;  // address to start
+    // 0 2 4 6 8 10
+    // 0 1 2 3 4 5
+    //   2   6   10
     while (1)
     {
+      wattron(win_registers, COLOR_PAIR(1));
       wprintw(win_registers, "%04X ", i);
+
       x = 16;  // cols to show per row
       while (x > 0)
       {
+        if (i < 128)
+        {
+          if (((i / 2) % 2) == 0)
+          {  
+            wattron(win_registers, COLOR_PAIR(1) | A_BOLD);
+          }
+          else
+          {
+            wattron(win_registers, COLOR_PAIR(5) | A_BOLD);  // YELLOW
+          }
+        }
+        else
+        {
+            wattron(win_registers, COLOR_PAIR(1) | A_BOLD);
+        }
 
         // show registers in "big endian" addressing
         wprintw(win_registers, "%02X", ptr[i+1]);
@@ -726,7 +775,7 @@ void UpdateScreen()
         wprintw(win_registers, "%02X", ptr[i]);
         i += 2;
 
-        if (i % 16 == 0)
+        if ((i % 16) == 0)  // show a "split" between left 16 and rigth 16
         {
           wprintw(win_registers, " ");
         }
@@ -738,7 +787,7 @@ void UpdateScreen()
           //wprintw(win_registers,"| ");
         }
       }
-      if (i > 32*(win_registers_height-1))  // show max 16 bytes win_registers rows-1
+      if (i > 32*(win_registers_height-2))  // show max 16 bytes win_registers rows-1
       {
         break;
       }
@@ -750,6 +799,7 @@ void UpdateScreen()
     //printf("---END\n");
 	}
 
+  /*
   x = 8;
   for (i = 0; i < 4; ++i)
   {
@@ -767,6 +817,7 @@ void UpdateScreen()
     }
     ++x;
   }
+  */
   //mvprintw( 8, 70, "%d", mode[0]);
   //mvprintw( 9, 70, "%d", mode[1]);
   //mvprintw(10, 70, "%d", mode[2]);
@@ -1225,8 +1276,8 @@ int DoEvents()
           break;
       }
 
-      wprintw(win_inputs, "\n%3u -> %3u", e.xkey.keycode, c);
-      wrefresh(win_inputs);
+      //wprintw(win_inputs, "\n%3u -> %3u", e.xkey.keycode, c);
+      //wrefresh(win_inputs);
 
       if (step_mode == 1)
       {

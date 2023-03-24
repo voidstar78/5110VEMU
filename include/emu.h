@@ -12,6 +12,8 @@
 #ifndef _EMU_H
 #define _EMU_H
 
+#include <curses.h>
+
 #ifdef LITTLE_ENDIAN
 #define SWAB(x1)		(USHORT)(((x1<<8)|(x1>>8)))
 #else
@@ -38,6 +40,9 @@ extern unsigned long int do_step;
 extern long int start_step_at;  // -1 to break at 0B00
 extern char str_command_input[255];
 extern char str_binary_load[255];
+
+WINDOW* win_disasm;
+extern unsigned long long int instr_count[4];
 
 typedef unsigned char UCHAR;
 typedef unsigned char UBYTE;

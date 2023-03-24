@@ -280,14 +280,14 @@ char font_translate[] = {
   'G',  // 071
   'H',  // 072
   'I',  // 073 
-  191,  // 074
+  191,  // 074  cents
   '.',  // 075
   '<',  // 076
   '(',  // 077
   '+',  // 078
-  ' ',  // 079
+  '|',  // 079  vertical bar
   '&',  // 080
-  'J',  // 081
+  'J',  // 081  underscore versions
   'K',  // 082
   'L',  // 083 
   'M',  // 084
@@ -296,15 +296,15 @@ char font_translate[] = {
   'P',  // 087 
   'Q',  // 088
   'R',  // 089
-  '!',  // 090 
+  '!',  // 090  exclamation 
   '$',  // 091
   '*',  // 092
   ')',  // 093
   ';',  // 094
-  191,  // 095
+  191,  // 095  right-notch
   '-',  // 096
   '/',  // 097
-  'S',  // 098
+  'S',  // 098  underscore versions
   'T',  // 099
   'U',  // 100 
   'V',  // 101
@@ -312,7 +312,7 @@ char font_translate[] = {
   'X',  // 103
   'Y',  // 104 
   'Z',  // 105
-  ':',  // 106
+  ':',  // 106  wide-colon
   ',',  // 107 
   '%',  // 108
   '_',  // 109
@@ -359,7 +359,7 @@ char font_translate[] = {
   'o',  // 150
   'p',  // 151 
   'q',  // 152
-  191,  // 153
+  'r',  // 153
   191,  // 154
   191,  // 155 
   191,  // 156
@@ -367,7 +367,7 @@ char font_translate[] = {
   191,  // 158 
   171,  // 159 << left pointing arrow
   '-',  // 160
-  191,  // 161
+  '~',  // 161
   's',  // 162
   't',  // 163
   'u',  // 164
@@ -553,13 +553,13 @@ int DisplayInit()
   mvprintw(20, 88, "F5     = STEP MODE TOGGLE / F4 DISASM TRACE TOGGLE");
   mvprintw(21, 88, "F6-F10 = STEP 1/100/1000/10000/100000");
 
-  attron(COLOR_PAIR(2));
-  mvprintw(16, 140, "BE 00A0: run opcode test");
-  mvprintw(17, 140, "BX 000A: run language (BX is even address only)");
-  mvprintw(18, 140, "BR 0B00: run RWS code (typical address)");
-  mvprintw(19, 140, "UTIL DIR,D80     list disk D80/D40/D20/D10");
-  mvprintw(20, 140, "UTIL DIR,E80     list tape E80/E40 (slow!)");
-  mvprintw(21, 140, "REWIND           rewind the tape");
+//  attron(COLOR_PAIR(2));
+//  mvprintw(16, 140, "BE 00A0: run opcode test");
+//  mvprintw(17, 140, "BX 000A: run language (BX is even address only)");
+//  mvprintw(18, 140, "BR 0B00: run RWS code (typical address)");
+//  mvprintw(19, 140, "UTIL DIR,D80     list disk D80/D40/D20/D10");
+//  mvprintw(20, 140, "UTIL DIR,E80     list tape E80/E40 (slow!)");
+//  mvprintw(21, 140, "REWIND           rewind the tape");
   attron(COLOR_PAIR(0));
 
   /*
@@ -899,7 +899,7 @@ unsigned int translate_sequence(char ch, unsigned int* state_ptr)
   (*state_ptr) = 0;
 
   // http://www.bitsavers.org/pdf/ibm/5110/SY31-0550-2_IBM_5110_Computer_Maintenance_Information_Manual_Feb1979.pdf
-  // MIM 2-26 keycodes
+  // MIM 2-36 keycodes
 
   // the result here is an INDEX into the scancodes table (which are then converted into IBM 5110 scan codes)
   switch (ch)
@@ -956,6 +956,13 @@ unsigned int translate_sequence(char ch, unsigned int* state_ptr)
   case 17:  if (do_step == 0) do_step = 10000; result = 0; break;  // F9, 10000 is number of steps
   case 18:  if (do_step == 0) do_step = 100000; result = 0; break;  // F10, 100000 is number of steps
 
+  //case 19: F11 generally reserved for "full screen" - which DOS terminal will interpret and screw up the dimensions of the window
+  case 20:     
+    wprintw(win_disasm, "level 0 count: %lld\n", instr_count[0]);
+    wrefresh(win_disasm); 
+    result = 0;  // don't pass the key into the emulator
+    break;
+
   case '`':  result = 110; break;   // ~/` --> HOLD key
   case -30: result = 82; (*state_ptr) = ControlMask; break;  // CTRL-TAB --> CMD-MINUS
   case 95:  result = 86; (*state_ptr) = ControlMask; break;  // SHIFT-TAB --> CMD-PLUS
@@ -975,6 +982,7 @@ unsigned int translate_sequence(char ch, unsigned int* state_ptr)
   case '\\': result = 61; (*state_ptr) = ShiftMask; break; // BLACKSASH (shifted version on bottom)
   case '+': result = 86; break;  // KEYPAD PLUS  (could also use result = 20)
   case '$': result = 94; break;  // DOLLAR SIGN
+  case '|': result = 58; (*state_ptr) = ShiftMask; break;  // SHIFT+M
   case '<': result = 12; (*state_ptr) = ShiftMask; break;
   case '>': result = 16; (*state_ptr) = ShiftMask; break;
 

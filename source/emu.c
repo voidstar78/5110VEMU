@@ -607,6 +607,7 @@ int disasm(WINDOW* out_win, unsigned short n0, unsigned short addr, unsigned sho
   return result;
 }
 // **********************************************
+unsigned long long int instr_count[4] = {0,0,0,0};
 
 int emu_fetch()
 {
@@ -615,7 +616,6 @@ int emu_fetch()
 #endif
   //static int prev_level = 99;
 //  static USHORT prev_OP = 0xFFFF;
-  static unsigned long long int instr_count[4] = {0,0,0,0};
   static char loaded_binary = FALSE;
 	FILE *infile;
 	char *fname, *base;
@@ -633,9 +633,10 @@ int emu_fetch()
     // only do this after the startup memory checks
     // because those checks overwrite RWS.
     // the following value was determined by trial and error (can be a little lower when BASIC used)
+    // NOTE: apparently BASIC ROS writes 0x0000 to address 0xB2E0
     if (instr_count[0] > 10000000)  
     {
-      baseval = 0x0B00;
+      baseval = 0x2000;
 
       // do LoadFile
 	    infile = fopen(str_binary_load, "rb");
@@ -650,7 +651,7 @@ int emu_fetch()
 
   if ((step_mode == 1) || (disasm_trace != 0))
   {
-    if (do_step == 0)
+    if ((do_step == 0) || (disasm_trace != 0)) 
     {
       /*
       wclear(win_addr);
@@ -750,11 +751,11 @@ int emu_fetch()
       */
 
       // show disassembled opcode
-      if (disasm_trace == 1)
+      //if (disasm_trace == 1)
       {
         // will show it later
       }
-      else
+      //else
       {
 
         if ((OP == prev_n0) && (prev_addr == OP_addr)) 
@@ -771,8 +772,8 @@ int emu_fetch()
           wrefresh(win_disasm);
 // ***********************************
           wclear(win_disasm_long);
-          OP_addr_long = OP_addr-16;
-          while ( OP_addr_long < OP_addr+16 )
+          OP_addr_long = OP_addr-22;  // 22 bytes?   was -16
+          while ( OP_addr_long < OP_addr+22 )     // was +16
           {
 	  OP_temp = 
       ((mode[level] == MODE_RWS) ? 
@@ -799,8 +800,6 @@ int emu_fetch()
         : 
           // "false", index into the designated ROS for level 0
           curr_ros))[(OP_addr_long >> 1)+1];   // does >>1 imply a ROS can't be larger than 32K ?  (this limitation does not apply to non-executable ROS)
-
-
 
   #ifdef LITTLE_ENDIAN
 	  OP_temp = SWAB(OP_temp);
@@ -858,14 +857,12 @@ int emu_fetch()
 //  mvprintw(2, 150, "test");  //%04X", &RWS);
 
   OP_addr = RWS[level * 16];
-  if (OP_addr == 0x0B00)
+  if (OP_addr == 0x2000)
   {
     if (start_step_at == -1)
     {
       start_step_at = instr_count[level]+1;
-      wprintw(win_disasm, "[0x0B00 @ %lu]\n", instr_count[level]);
-      wprintw(win_disasm, "[0x0B00 @ %lu]\n", instr_count[level]);
-      wprintw(win_disasm, "[0x0B00 @ %lu]\n", instr_count[level]);
+      wprintw(win_disasm, "[0x2000 @ %lu]\n", instr_count[level]);
     }
   }
 
@@ -1083,6 +1080,7 @@ int emu_fetch()
 			break;
 	}
 
+  /*
   if (disasm_trace != 0)
   {
         if ((OP == prev_n0) && (prev_addr == OP_addr)) 
@@ -1095,10 +1093,11 @@ int emu_fetch()
           prev_n0 = OP;
           prev_addr = OP_addr;
 
-          disasm(win_disasm, OP, OP_addr, OP_next); 
-          wrefresh(win_disasm);
+          //disasm(win_disasm_long, OP, OP_addr, OP_next); 
+          //wrefresh(win_disasm_long);
         }
   }
+  */
 
 	TRACE(0, 0);
 
@@ -1930,11 +1929,11 @@ int emu_init()
   win_disasm_height = 8;
   win_disasm_width = 72;
   win_disasm = newwin(win_disasm_height, win_disasm_width, 8, 65);
-  wprintw(win_console, "VEMU5110\n");
+  wprintw(win_disasm, "VEMU5110 V2 by voidstar - 2023\n");
   scrollok(win_disasm, 1);
   wbkgd(win_disasm, COLOR_PAIR(1));
 
-  win_disasm_long_height = 16;
+  win_disasm_long_height = 21;
   win_disasm_long_width = 56;
   win_disasm_long = newwin(win_disasm_long_height, win_disasm_long_width, 0, 140);
   scrollok(win_disasm_long, 0);

@@ -1,0 +1,10 @@
+D 20
+N 110  press HOLD
+D 20
+C 82   index 82 = CMD-MINUS    enter DSP
+D 20
+C 63   index 63 = CMD-MULTIPLY enter DIAG
+D 10   return to DCP console by pressing ATTN
+N 9    ATTN
+Q 0 BR 2000
+N 36   EXECUTE

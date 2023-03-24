@@ -1,0 +1,23 @@
+D 0 ADAPTED TO IBM 5110 BASIC
+D 0 DELAY TO WAIT FOR BOOT UP CRC CHECKS AND ROS LOAD
+D 50 
+D 0 BASIC STATEMENTS CANNOT EXCEED 64 CHARACTERS PER LINE
+D 0 34567890123456789012345678901234567890123456789012345678901234
+A 0 200 DIM C$23(1)
+A 0 210 PRINT C$(1)||'    *       *'
+A 0 240 PRINT C$(1)||'    **     **'
+A 0 250 PRINT C$(1)||'    ***   ***'
+A 0 270 PRINT C$(1)||'    **** ****'
+A 0 280 PRINT C$(1)||'*****************'
+A 0 290 PRINT C$(1)||' ***************'
+A 0 300 PRINT C$(1)||'  *************'
+A 0 410 PRINT C$(1)||'   ***********'
+A 0 460 PRINT C$(1)||'    *********'
+A 0 670 PRINT C$(1)||'   ***********'
+A 0 720 PRINT C$(1)||'  *************'
+A 0 780 PRINT C$(1)||' ***************'
+A 0 830 PRINT C$(1)||'*****************'
+A 0 850 PRINT C$(1)||'    **** ****'
+A 0 860 PRINT C$(1)||'    ***   ***'
+A 0 870 PRINT C$(1)||'    **     **'
+A 0 880 PRINT C$(1)||'    *       *'
